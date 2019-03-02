@@ -1,55 +1,55 @@
 #include "tests.h"
 
-#include <assert.h>
 #include <string>
 #include <vector>
 #include <functional>
 #include <iostream>
-
-#include "expression_fetcher.h"
 
 std::string quote(const std::string &val)
 {
     return "'" + val + "'";
 }
 
-bool _check(const std::string &v1, const std::string &v2)
-{
-    if(v1 == v2)
-    {
-        std::cout << quote(v1) << " == " << quote(v2) << std::endl;
-        return true;
-    }
-    else
-    {
-        std::cout << quote(v1) << " != " << quote(v2) << std::endl;
-        assert(v1 == v2);
-        return false;
-    }
-}
-
-bool test_1()
-{
-    int a = 30;
-    return _check(FETCH(a), "30");
-}
-
 namespace expression_fetcher
 {
-
-bool tests()
-{
-    std::vector<std::function<bool()>> tests_fn = {
-            test_1,
-    };
-
-    bool result = true;
-    for(const auto &fn : tests_fn)
+    namespace tests
     {
-        result = fn() && result;
+        std::vector<Descr> tests_fn;
+
+        void Register(Descr &&descr)
+        {
+            tests_fn.emplace_back(descr);
+        }
+
+        bool Run()
+        {
+            bool result = true;
+            for(const auto &descr : tests_fn)
+            {
+                std::cout << "- " << descr.name << "..." << std::endl;
+                const bool test_result = descr.fn();
+                std::cout << (test_result ? "Ok" : "error") << std::endl;
+
+                result = test_result && result;
+            }
+            std::cout << "Tests processed: " << tests_fn.size() 
+                << " with result " << result << std::endl;
+
+            return result;
+        }
+
+        bool Check(const std::string &v1, const std::string &v2)
+        {
+            if(v1 == v2)
+            {
+                std::cout << quote(v1) << " == " << quote(v2) << std::endl;
+                return true;
+            }
+            else
+            {
+                std::cout << quote(v1) << " != " << quote(v2) << std::endl;
+                return false;
+            }
+        }
     }
-
-    return result;
-}
-
 }

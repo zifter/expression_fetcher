@@ -6,75 +6,195 @@
 
 namespace expression_fetcher
 {
+    namespace
+    {
+        // It's used to control the way how value is dumping
+        class InternalDumpStream
+        {
+        public:
+            InternalDumpStream() = default;
+            ~InternalDumpStream() = default;
+
+            template<typename T>
+            InternalDumpStream &operator <<(const T &value)
+            {
+                sstr << value;
+                return *this;
+            }
+
+            std::string GetValue() const
+            {
+                return sstr.str();
+            }
+
+        private:
+            std::stringstream sstr;
+        };
+
+        
+        template<>
+        InternalDumpStream &InternalDumpStream::operator <<(const bool &value)
+        {
+            if(value)
+            {
+                sstr << "true";
+            }
+            else
+            {
+                sstr << "false";
+            }
+            return *this;
+        }
+    }
+
     class Fetcher
     {
     public:
+        Fetcher(bool isLeftFetcher)
+            : isLeft(isLeftFetcher)
+        {}
+    
+        template<typename T>
+        void dump(const T &value, const char *operatorString)
+        {
+            if(is_stopped())
+            {
+                return;
+            }
+
+            InternalDumpStream stream;
+            if(isLeft)
+            {
+                if(!values.empty())
+                {
+                    stream << operatorString;
+                }
+                stream << value;
+            }
+            else
+            {
+                stream << value;
+                if(!values.empty())
+                {
+                    stream << operatorString;
+                }
+            }
+            
+            values.push_back(stream.GetValue());
+        }
+
         bool is_stopped() const
         {
-            return _stopped;
+            return stopped;
         }
 
         std::string get_string() const
         {
             std::string str;
-            for(const auto &val : _values)
+            if(isLeft)
             {
-                str += val + " ";
+                for(auto it = values.begin(); it != values.end(); ++it)
+                {
+                    str += *it;
+                }
             }
+            else
+            {
+                for(auto it = values.rbegin(); it != values.rend(); ++it)
+                {
+                    str += *it;
+                }
+            }
+            
             return str;
         }
 
-        template<typename T>
-        void grab(const T &lvalue)
+        void stop(const char *stop)
         {
-            if(!is_stopped())
+            if(stop)
             {
-                std::stringstream sstr;
-                sstr << lvalue << " ";
-                _values.push_back(sstr.str());
+                values.push_back(stop);
             }
-        }
-
-        void stop()
-        {
-            _stopped = false;
+            stopped = true;
         }
 
         void reverse()
         {
-            std::reverse(_values.begin(), _values.end());
+            std::reverse(values.begin(), values.end());
         }
 
     private:
-        std::vector<std::string> _values;
-        bool _stopped = false;
+        std::vector<std::string> values;
+        bool isLeft = false;
+        bool stopped = false;
     };
 
     // left
     template <typename T> auto & operator %(Fetcher& ifetcher, const T& lvalue)
     {
-        ifetcher.grab(lvalue);
+        ifetcher.dump(lvalue, " % ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator <(Fetcher& ifetcher, const T& lvalue)
+    {
+        ifetcher.dump(lvalue, " < ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator >(Fetcher& ifetcher, const T& lvalue)
+    {
+        ifetcher.dump(lvalue, " > ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator &&(Fetcher& ifetcher, const T& lvalue)
+    {
+        ifetcher.stop(" && ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator ||(Fetcher& ifetcher, const T& lvalue)
+    {
+        ifetcher.stop(" || ");
         return ifetcher;
     }
 
     // right
     template <typename T> auto & operator %(const T& lvalue, Fetcher& ifetcher)
     {
-        ifetcher.grab(lvalue);
+        ifetcher.dump(lvalue, " % ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator <(const T& lvalue, Fetcher& ifetcher)
+    {
+        ifetcher.dump(lvalue, " < ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator >(const T& lvalue, Fetcher& ifetcher)
+    {
+        ifetcher.dump(lvalue, " > ");
+        return ifetcher;
+    }
+    template <typename T> auto & operator &&(const T& lvalue, Fetcher& ifetcher)
+    {
+        ifetcher.stop(nullptr);
+        return ifetcher;
+    }
+    template <typename T> auto & operator ||(const T& lvalue, Fetcher& ifetcher)
+    {
+        ifetcher.stop(nullptr);
         return ifetcher;
     }
 }
 
+
 #define FETCH(expr) \
     [&](){ \
         using namespace expression_fetcher; \
-        Fetcher left, right; \
+        Fetcher left(true); \
         left % expr; \
-        expr % right; \
-        right.reverse(); \
         if(left.is_stopped()) \
         { \
-            return left.get_string() + " " + right.get_string(); \
+            Fetcher right(false); \
+            expr % right; \
+            return left.get_string() + right.get_string(); \
         } \
         else \
         { \
