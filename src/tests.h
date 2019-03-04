@@ -22,7 +22,7 @@ namespace expression_fetcher
 }
 
 
-#define TEST(FN_NAME) \
+#define FETCHER_TEST(FN_NAME) \
     bool FN_NAME(); \
     struct FN_NAME##_register \
     { \

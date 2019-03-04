@@ -47,7 +47,7 @@ namespace expression_fetcher
             }
             else
             {
-                std::cout << quote(v1) << " != " << quote(v2) << std::endl;
+                std::cerr << quote(v1) << " != " << quote(v2) << std::endl;
                 return false;
             }
         }

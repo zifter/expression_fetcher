@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 
+
 namespace expression_fetcher
 {
     namespace
@@ -129,63 +130,63 @@ namespace expression_fetcher
         bool stopped = false;
     };
 
-    // left
-    template <typename T> auto & operator %(Fetcher& ifetcher, const T& lvalue)
-    {
-        ifetcher.dump(lvalue, " % ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator <(Fetcher& ifetcher, const T& lvalue)
-    {
-        ifetcher.dump(lvalue, " < ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator >(Fetcher& ifetcher, const T& lvalue)
-    {
-        ifetcher.dump(lvalue, " > ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator &&(Fetcher& ifetcher, const T& lvalue)
-    {
-        ifetcher.stop(" && ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator ||(Fetcher& ifetcher, const T& lvalue)
-    {
-        ifetcher.stop(" || ");
-        return ifetcher;
-    }
+    #define DEFINE_LEFT_OPERATOR_DUMPER(OPERATOR) \
+        template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
+        {  \
+            ifetcher.dump(lvalue, " "#OPERATOR" ");  \
+            return ifetcher;  \
+        }
 
-    // right
-    template <typename T> auto & operator %(const T& lvalue, Fetcher& ifetcher)
-    {
-        ifetcher.dump(lvalue, " % ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator <(const T& lvalue, Fetcher& ifetcher)
-    {
-        ifetcher.dump(lvalue, " < ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator >(const T& lvalue, Fetcher& ifetcher)
-    {
-        ifetcher.dump(lvalue, " > ");
-        return ifetcher;
-    }
-    template <typename T> auto & operator &&(const T& lvalue, Fetcher& ifetcher)
-    {
-        ifetcher.stop(nullptr);
-        return ifetcher;
-    }
-    template <typename T> auto & operator ||(const T& lvalue, Fetcher& ifetcher)
-    {
-        ifetcher.stop(nullptr);
-        return ifetcher;
-    }
+    #define DEFINE_RIGHT_OPERATOR_DUMPER(OPERATOR) \
+        template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
+        { \
+            ifetcher.dump(rvalue, " "#OPERATOR" "); \
+            return ifetcher; \
+        }
+
+    #define DEFINE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
+        template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
+        {  \
+            ifetcher.stop(" "#OPERATOR" "); \
+            return ifetcher; \
+        }
+
+    #define DEFINE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR) \
+        template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
+        { \
+            ifetcher.stop(nullptr); \
+            return ifetcher; \
+        }
+
+    #define CREATE_DUMP_FOR_OPERATOR(OPERATOR) \
+        DEFINE_LEFT_OPERATOR_DUMPER(OPERATOR) \
+        DEFINE_RIGHT_OPERATOR_DUMPER(OPERATOR)
+
+    #define CREATE_STOP_FOR_OPERATOR(OPERATOR) \
+        DEFINE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
+        DEFINE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR)
+
+    // left
+    CREATE_DUMP_FOR_OPERATOR(+)
+    CREATE_DUMP_FOR_OPERATOR(-)
+    CREATE_DUMP_FOR_OPERATOR(*)
+    CREATE_DUMP_FOR_OPERATOR(/)
+    CREATE_DUMP_FOR_OPERATOR(%)
+    CREATE_DUMP_FOR_OPERATOR(==)
+    CREATE_DUMP_FOR_OPERATOR(!=)
+    CREATE_DUMP_FOR_OPERATOR(<)
+    CREATE_DUMP_FOR_OPERATOR(>)
+    CREATE_DUMP_FOR_OPERATOR(<=)
+    CREATE_DUMP_FOR_OPERATOR(>=)
+#if __cplusplus > 201902L // for future release
+    CREATE_DUMP_FOR_OPERATOR(<==>)
+#endif
+    CREATE_STOP_FOR_OPERATOR(&&)
+    CREATE_STOP_FOR_OPERATOR(||)
 }
 
 
-#define FETCH(expr) \
+#define EVAL_CONDITION(expr) \
     [&](){ \
         using namespace expression_fetcher; \
         Fetcher left(true); \
@@ -201,3 +202,6 @@ namespace expression_fetcher
             return left.get_string(); \
         } \
     }()
+
+#define DUMP_EXPRESSION(expr) \
+    std::string(#expr)
