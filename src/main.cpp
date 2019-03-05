@@ -184,7 +184,8 @@ FETCHER_TEST(test_divide_or_divide)
     int valB = 33;
     int valC = 22;
     int valD = 11;
-    return false == Check(EVAL_CONDITION(valA / valB && valC / valD), "50 / 33 && 22 / 11");
+    // there is no chance to catch right part
+    return Check(EVAL_CONDITION(valA / valB && valC / valD), "50 / 33 && 2");
 }
 
 FETCHER_TEST(test_mult_or_mult)
@@ -192,18 +193,37 @@ FETCHER_TEST(test_mult_or_mult)
     int valA = 50;
     int valB = 33;
     int valC = 22;
-    int valD = 11;
-    return false == Check(EVAL_CONDITION(valA * valB && valC * valD), "50 * 33 && 22 * 11");
+    int valD = 0;
+    // there is no chance to catch right part
+    return Check(EVAL_CONDITION(valA * valB && valC * valD), "50 * 33 && 0");
 }
 
-FETCHER_TEST(test_code_expression)
+FETCHER_TEST(test_expression_with_2_stop_and)
 {
     int valA = 50;
     int valB = 33;
     int valC = 22;
-    int valD = 11;
-    return Check(DUMP_EXPRESSION(valA * valB && valC * valD), "valA * valB && valC * valD");
+    int valD = 0;
+    int valE = 23;
+    int valF = 45;
+
+    return Check(EVAL_CONDITION(valA - valB && valC < valD && valE > valF), 
+        "50 - 33 && false && 23 > 45");
 }
+
+FETCHER_TEST(test_expression_with_2_stop_or)
+{
+    int valA = 50;
+    int valB = 33;
+    int valC = 22;
+    int valD = 0;
+    int valE = 23;
+    int valF = 45;
+
+    return Check(EVAL_CONDITION(valA - valB || valC < valD || valE > valF), 
+        "50 - 33 || false || 23 > 45");
+}
+
 
 int main()
 {

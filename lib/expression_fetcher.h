@@ -51,36 +51,38 @@ namespace expression_fetcher
     class Fetcher
     {
     public:
-        Fetcher(bool isLeftFetcher)
-            : isLeft(isLeftFetcher)
+        Fetcher()
         {}
     
         template<typename T>
-        void dump(const T &value, const char *operatorString)
+        void dump_right(const char *operatorString, const T &rvalue)
+        {
+            if(!values.empty()) // skip first %
+            {
+                values.push_back(operatorString);
+            }
+
+            InternalDumpStream stream;
+            stream << rvalue;
+            values.push_back(stream.GetValue());
+        }
+
+        template<typename T>
+        void dump_left(const T &lvalue, const char *operatorString)
         {
             if(is_stopped())
             {
                 return;
             }
 
+            const bool needAppendOperator = !values.empty();
+            if(needAppendOperator)
+            {
+                values.push_back(operatorString);
+            }
+
             InternalDumpStream stream;
-            if(isLeft)
-            {
-                if(!values.empty())
-                {
-                    stream << operatorString;
-                }
-                stream << value;
-            }
-            else
-            {
-                stream << value;
-                if(!values.empty())
-                {
-                    stream << operatorString;
-                }
-            }
-            
+            stream << lvalue;
             values.push_back(stream.GetValue());
         }
 
@@ -89,24 +91,35 @@ namespace expression_fetcher
             return stopped;
         }
 
-        std::string get_string() const
+        bool is_cut() const
+        {
+            return rightIndex != 0;
+        }
+
+        std::string get_left_string() const
         {
             std::string str;
-            if(isLeft)
+            size_t count = values.size();
+            if(is_cut())
             {
-                for(auto it = values.begin(); it != values.end(); ++it)
-                {
-                    str += *it;
-                }
-            }
-            else
-            {
-                for(auto it = values.rbegin(); it != values.rend(); ++it)
-                {
-                    str += *it;
-                }
+                count = rightIndex - 1;
             }
             
+            for(size_t i = 0; i < count; ++i)
+            {
+                str += values[i];
+            }
+           
+            return str;
+        }
+
+        std::string get_right_string() const
+        {
+            std::string str;
+            for(auto it = values.rbegin(); it != values.rend(); ++it)
+            {
+                str += *it;
+            }
             return str;
         }
 
@@ -119,39 +132,40 @@ namespace expression_fetcher
             stopped = true;
         }
 
-        void reverse()
+        void keep_right_position()
         {
-            std::reverse(values.begin(), values.end());
+            rightIndex = values.size();
         }
 
     private:
         std::vector<std::string> values;
-        bool isLeft = false;
+        size_t rightIndex = 0;
         bool stopped = false;
     };
 
-    #define DEFINE_LEFT_OPERATOR_DUMPER(OPERATOR) \
+    #define CREATE_LEFT_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
         {  \
-            ifetcher.dump(lvalue, " "#OPERATOR" ");  \
+            ifetcher.dump_right(" "#OPERATOR" ", lvalue);  \
             return ifetcher;  \
         }
 
-    #define DEFINE_RIGHT_OPERATOR_DUMPER(OPERATOR) \
+    #define CREATE_RIGHT_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
         { \
-            ifetcher.dump(rvalue, " "#OPERATOR" "); \
+            ifetcher.dump_left(rvalue, " "#OPERATOR" "); \
             return ifetcher; \
         }
 
-    #define DEFINE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
+    #define CREATE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
         {  \
-            ifetcher.stop(" "#OPERATOR" "); \
+            ifetcher.dump_right(" "#OPERATOR" ", lvalue); \
+            ifetcher.keep_right_position(); \
             return ifetcher; \
         }
 
-    #define DEFINE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR) \
+    #define CREATE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
         { \
             ifetcher.stop(nullptr); \
@@ -159,26 +173,25 @@ namespace expression_fetcher
         }
 
     #define CREATE_DUMP_FOR_OPERATOR(OPERATOR) \
-        DEFINE_LEFT_OPERATOR_DUMPER(OPERATOR) \
-        DEFINE_RIGHT_OPERATOR_DUMPER(OPERATOR)
+        CREATE_LEFT_OPERATOR_DUMPER(OPERATOR) \
+        CREATE_RIGHT_OPERATOR_DUMPER(OPERATOR)
 
     #define CREATE_STOP_FOR_OPERATOR(OPERATOR) \
-        DEFINE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
-        DEFINE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR)
+        CREATE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
+        CREATE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR)
 
-    // left
+    CREATE_LEFT_OPERATOR_DUMPER(*) // right part is not necessary because of priority
+    CREATE_LEFT_OPERATOR_DUMPER(/) 
+    CREATE_DUMP_FOR_OPERATOR(%)
     CREATE_DUMP_FOR_OPERATOR(+)
     CREATE_DUMP_FOR_OPERATOR(-)
-    CREATE_DUMP_FOR_OPERATOR(*)
-    CREATE_DUMP_FOR_OPERATOR(/)
-    CREATE_DUMP_FOR_OPERATOR(%)
     CREATE_DUMP_FOR_OPERATOR(==)
     CREATE_DUMP_FOR_OPERATOR(!=)
     CREATE_DUMP_FOR_OPERATOR(<)
     CREATE_DUMP_FOR_OPERATOR(>)
     CREATE_DUMP_FOR_OPERATOR(<=)
     CREATE_DUMP_FOR_OPERATOR(>=)
-#if __cplusplus > 201902L // for future release
+#if __cplusplus > 201902L // for future release standart
     CREATE_DUMP_FOR_OPERATOR(<==>)
 #endif
     CREATE_STOP_FOR_OPERATOR(&&)
@@ -189,17 +202,17 @@ namespace expression_fetcher
 #define EVAL_CONDITION(expr) \
     [&](){ \
         using namespace expression_fetcher; \
-        Fetcher left(true); \
+        Fetcher left; \
         left % expr; \
-        if(left.is_stopped()) \
+        if(left.is_cut()) \
         { \
-            Fetcher right(false); \
+            Fetcher right; \
             expr % right; \
-            return left.get_string() + right.get_string(); \
+            return left.get_left_string() + right.get_right_string(); \
         } \
         else \
         { \
-            return left.get_string(); \
+            return left.get_left_string(); \
         } \
     }()
 
