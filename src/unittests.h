@@ -10,27 +10,27 @@ namespace expression_fetcher
         struct Descr
         {
             std::string name;
-            std::function<bool()> fn;
+            std::function<void()> fn;
         };
 
         void Register(Descr &&descr);
 
         bool Run();
 
-        bool Check(const std::string &v1, const std::string &v2);
+        void Check(const std::string &v1, const std::string &v2);
     }
 }
 
 
 #define FETCHER_TEST(FN_NAME) \
-    bool FN_NAME(); \
+    void FN_NAME(); \
     struct FN_NAME##_register \
     { \
         FN_NAME##_register() \
         { \
-            std::function<bool()> fn = FN_NAME; \
+            std::function<void()> fn = FN_NAME; \
             expression_fetcher::tests::Register({#FN_NAME, fn}); \
         } \
     }; \
     static FN_NAME##_register FN_NAME##_value; \
-    bool FN_NAME()
+    void FN_NAME()

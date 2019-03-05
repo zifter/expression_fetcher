@@ -3,48 +3,80 @@
 #include <vector>
 #include <string>
 #include <sstream>
-
+#include <type_traits>
 
 namespace expression_fetcher
 {
     namespace
     {
-        // It's used to control the way how value is dumping
-        class InternalDumpStream
+        template<typename T>
+        class IsStreamAvailable
         {
-        public:
-            InternalDumpStream() = default;
-            ~InternalDumpStream() = default;
-
-            template<typename T>
-            InternalDumpStream &operator <<(const T &value)
-            {
-                sstr << value;
-                return *this;
-            }
-
-            std::string GetValue() const
-            {
-                return sstr.str();
-            }
-
         private:
-            std::stringstream sstr;
+            template<typename SS, typename TT>
+            static auto test(int) -> decltype(std::declval<SS &>() << std::declval<TT>(), std::true_type());
+        
+            template<typename, typename>
+            static auto test(...)->std::false_type;
+
+        public:
+            static const bool value = decltype(test<std::stringstream, const T &>(0))::value;
         };
 
+        template<typename T>
+        typename std::enable_if<
+            IsStreamAvailable<typename std::decay<T>::type>::value && 
+            !std::is_pointer<T>::value, std::string>::type 
+            to_string(const T &value)
+        {
+            std::stringstream sstr;
+            sstr << value;
+            return sstr.str();
+        }
         
-        template<>
-        InternalDumpStream &InternalDumpStream::operator <<(const bool &value)
+        template<typename... T>
+        std::string to_string(const T &...)
+        {
+            return "#val";
+        }
+
+        template<typename T>
+        std::string to_string(T *val)
+        {
+            std::stringstream sstr;
+            sstr << "0x" << std::hex << reinterpret_cast<uintptr_t>(val);
+            return sstr.str();
+        }
+
+        std::string to_string(bool value)
         {
             if(value)
             {
-                sstr << "true";
+                return "true";
             }
             else
             {
-                sstr << "false";
+                return "false";
             }
-            return *this;
+        }
+
+        std::string to_string(std::nullptr_t)
+        {
+            return "nullptr";
+        }
+
+        std::string to_string(const std::string &val)
+        {
+            std::stringstream sstr;
+            sstr << '"' << val << '"';
+            return sstr.str();
+        }
+
+        std::string to_string(const char *val)
+        {
+            std::stringstream sstr;
+            sstr << '"' << val << '"';
+            return sstr.str();
         }
     }
 
@@ -54,21 +86,16 @@ namespace expression_fetcher
         Fetcher()
         {}
     
-        template<typename T>
-        void dump_right(const char *operatorString, const T &rvalue)
+        void dump_right(const char *operatorString, std::string rvalue)
         {
             if(!values.empty()) // skip first %
             {
                 values.push_back(operatorString);
             }
-
-            InternalDumpStream stream;
-            stream << rvalue;
-            values.push_back(stream.GetValue());
+            values.push_back(std::move(rvalue));
         }
 
-        template<typename T>
-        void dump_left(const T &lvalue, const char *operatorString)
+        void dump_left(std::string lvalue, const char *operatorString)
         {
             if(is_stopped())
             {
@@ -81,9 +108,7 @@ namespace expression_fetcher
                 values.push_back(operatorString);
             }
 
-            InternalDumpStream stream;
-            stream << lvalue;
-            values.push_back(stream.GetValue());
+            values.push_back(std::move(lvalue));
         }
 
         bool is_stopped() const
@@ -137,6 +162,12 @@ namespace expression_fetcher
             rightIndex = values.size();
         }
 
+        operator bool() const 
+        { 
+            // TODO Need to fix ternary operator
+            return true; 
+        }
+
     private:
         std::vector<std::string> values;
         size_t rightIndex = 0;
@@ -146,21 +177,21 @@ namespace expression_fetcher
     #define CREATE_LEFT_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
         {  \
-            ifetcher.dump_right(" "#OPERATOR" ", lvalue);  \
+            ifetcher.dump_right(" "#OPERATOR" ", to_string(lvalue));  \
             return ifetcher;  \
         }
 
     #define CREATE_RIGHT_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
         { \
-            ifetcher.dump_left(rvalue, " "#OPERATOR" "); \
+            ifetcher.dump_left(to_string(rvalue), " "#OPERATOR" "); \
             return ifetcher; \
         }
 
     #define CREATE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
         {  \
-            ifetcher.dump_right(" "#OPERATOR" ", lvalue); \
+            ifetcher.dump_right(" "#OPERATOR" ", to_string(lvalue)); \
             ifetcher.keep_right_position(); \
             return ifetcher; \
         }
@@ -168,6 +199,7 @@ namespace expression_fetcher
     #define CREATE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR) \
         template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
         { \
+            std::ignore = rvalue; \
             ifetcher.stop(nullptr); \
             return ifetcher; \
         }
@@ -185,12 +217,12 @@ namespace expression_fetcher
     CREATE_DUMP_FOR_OPERATOR(%)
     CREATE_DUMP_FOR_OPERATOR(+)
     CREATE_DUMP_FOR_OPERATOR(-)
-    CREATE_DUMP_FOR_OPERATOR(==)
-    CREATE_DUMP_FOR_OPERATOR(!=)
     CREATE_DUMP_FOR_OPERATOR(<)
     CREATE_DUMP_FOR_OPERATOR(>)
     CREATE_DUMP_FOR_OPERATOR(<=)
     CREATE_DUMP_FOR_OPERATOR(>=)
+    CREATE_DUMP_FOR_OPERATOR(==)
+    CREATE_DUMP_FOR_OPERATOR(!=)
 #if __cplusplus > 201902L // for future release standart
     CREATE_DUMP_FOR_OPERATOR(<==>)
 #endif
