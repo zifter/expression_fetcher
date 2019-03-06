@@ -9,5 +9,5 @@ int main()
 
     assert(result == true);
 
-    return result == true;
+    return !result;
 }
