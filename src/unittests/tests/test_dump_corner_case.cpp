@@ -24,10 +24,10 @@ FETCHER_TEST(test_case2)
     Check(EVAL_CONDITION(2 == 2 && 1 == 1), "2 == 2 && 1 == 1");
 }
 
-FETCHER_TEST(test_case3)
-{
-    Check(EVAL_CONDITION(true ? 1 : 0), "1");
-}
+// FETCHER_TEST(test_case3)
+// {
+//     Check(EVAL_CONDITION(true ? 1 : 0), "1");
+// }
 
 // FETCHER_TEST(test_case4)
 // {

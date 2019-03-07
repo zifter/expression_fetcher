@@ -1,0 +1,32 @@
+version: 1.0.{build}
+image:
+- Visual Studio 2017
+- Visual Studio 2015
+- Visual Studio 2019 Preview
+configuration:
+- Debug
+- Release
+platform:
+- x86
+- x64
+- ARM
+clone_folder: c:\projects\expression_fetcher
+build_script:
+- cmd: >-
+    mkdir build
+
+    cd build
+
+    cmake ..
+
+    cmake --build . --config %configuration%
+test_script:
+- cmd: ctest -C %configuration% --output-on-failure
+notifications:
+- provider: Email
+  to:
+  - zifter.ai@gmail.com
+  subject: '[Appveyor] CI expression_fetcher'
+  on_build_success: false
+  on_build_failure: false
+  on_build_status_changed: true
