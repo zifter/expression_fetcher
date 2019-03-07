@@ -15,7 +15,7 @@ namespace expression_fetcher
         private:
             template<typename SS, typename TT>
             static auto test(int) -> decltype(std::declval<SS &>() << std::declval<TT>(), std::true_type());
-        
+
             template<typename, typename>
             static auto test(...)->std::false_type;
 
@@ -25,15 +25,15 @@ namespace expression_fetcher
 
         template<typename T>
         typename std::enable_if<
-            IsStreamAvailable<typename std::decay<T>::type>::value && 
-            !std::is_pointer<T>::value, std::string>::type 
+            IsStreamAvailable<typename std::decay<T>::type>::value &&
+            !std::is_pointer<T>::value, std::string>::type
             to_string(const T &value)
         {
             std::stringstream sstr;
             sstr << value;
             return sstr.str();
         }
-        
+
         template<typename... T>
         std::string to_string(const T &...)
         {
@@ -43,6 +43,10 @@ namespace expression_fetcher
         template<typename T>
         std::string to_string(T *val)
         {
+            if(val == nullptr)
+            {
+                return "nullptr";
+            }
             std::stringstream sstr;
             sstr << "0x" << std::hex << reinterpret_cast<uintptr_t>(val);
             return sstr.str();
@@ -85,7 +89,7 @@ namespace expression_fetcher
     public:
         Fetcher()
         {}
-    
+
         void dump_right(const char *operatorString, std::string rvalue)
         {
             if(!values.empty()) // skip first %
@@ -129,12 +133,12 @@ namespace expression_fetcher
             {
                 count = rightIndex - 1;
             }
-            
+
             for(size_t i = 0; i < count; ++i)
             {
                 str += values[i];
             }
-           
+
             return str;
         }
 
@@ -162,10 +166,10 @@ namespace expression_fetcher
             rightIndex = values.size();
         }
 
-        operator bool() const 
-        { 
+        operator bool() const
+        {
             // TODO Need to fix ternary operator
-            return true; 
+            return true;
         }
 
     private:
@@ -175,21 +179,21 @@ namespace expression_fetcher
     };
 
     #define CREATE_LEFT_OPERATOR_DUMPER(OPERATOR) \
-        template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
+        template <typename T> Fetcher &operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
         {  \
             ifetcher.dump_right(" "#OPERATOR" ", to_string(lvalue));  \
             return ifetcher;  \
         }
 
     #define CREATE_RIGHT_OPERATOR_DUMPER(OPERATOR) \
-        template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
+        template <typename T> Fetcher &operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
         { \
             ifetcher.dump_left(to_string(rvalue), " "#OPERATOR" "); \
             return ifetcher; \
         }
 
     #define CREATE_LEFT_STOP_OPERATOR_DUMPER(OPERATOR) \
-        template <typename T> auto & operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
+        template <typename T> Fetcher &operator OPERATOR(Fetcher& ifetcher, const T& lvalue) \
         {  \
             ifetcher.dump_right(" "#OPERATOR" ", to_string(lvalue)); \
             ifetcher.keep_right_position(); \
@@ -197,7 +201,7 @@ namespace expression_fetcher
         }
 
     #define CREATE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR) \
-        template <typename T> auto & operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
+        template <typename T> Fetcher &operator OPERATOR(const T& rvalue, Fetcher& ifetcher) \
         { \
             std::ignore = rvalue; \
             ifetcher.stop(nullptr); \
@@ -213,7 +217,7 @@ namespace expression_fetcher
         CREATE_RIGHT_STOP_OPERATOR_DUMPER(OPERATOR)
 
     CREATE_LEFT_OPERATOR_DUMPER(*) // right part is not necessary because of priority
-    CREATE_LEFT_OPERATOR_DUMPER(/) 
+    CREATE_LEFT_OPERATOR_DUMPER(/)
     CREATE_DUMP_FOR_OPERATOR(%)
     CREATE_DUMP_FOR_OPERATOR(+)
     CREATE_DUMP_FOR_OPERATOR(-)

@@ -24,7 +24,13 @@ FETCHER_TEST(test_bool_true)
 
 FETCHER_TEST(test_nullptr)
 {
-    Check(EVAL_CONDITION(nullptr), "nullptr");
+    Check(EVAL_CONDITION((std::nullptr_t)nullptr), "nullptr");
+}
+
+FETCHER_TEST(test_nullptr2)
+{
+    int *p = nullptr;
+    Check(EVAL_CONDITION(p), "nullptr");
 }
 
 FETCHER_TEST(test_const_char)
@@ -34,7 +40,8 @@ FETCHER_TEST(test_const_char)
 
 FETCHER_TEST(test_string)
 {
-    Check(EVAL_CONDITION(std::string("test")), "\"test\"");
+    std::string p("test");
+    Check(EVAL_CONDITION(p), "\"test\"");
 }
 
 struct TestStreamStruct
