@@ -11,7 +11,6 @@ platform:
 - x86
 - x64
 - ARM
-clone_folder: c:\projects\expression_fetcher
 build_script:
 - cmd: >-
     mkdir build
