@@ -14,14 +14,17 @@ platform:
 build_script:
 - cmd: >-
     mkdir build
-
     cd build
-
     cmake ..
-
+    cmake --build . --config %configuration%
+- sh: >-
+    mkdir build
+    cd build
+    cmake ..
     cmake --build . --config %configuration%
 test_script:
 - cmd: ctest -C %configuration% --output-on-failure
+- sh: ctest -C %configuration% --output-on-failure
 notifications:
 - provider: Email
   to:
