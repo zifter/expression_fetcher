@@ -9,5 +9,5 @@ Evaluate parts of condition
 
 [project-url]: https://github.com/zifter/expression_fetcher
 [releases-url]: https://github.com/zifter/expression_fetcher/releases
-[travis-url]: https://travis-ci.or//zifter/expression_fetcher
+[travis-url]: https://travis-ci.or/zifter/expression_fetcher
 [telegram-url]: https://t.me/zifter
