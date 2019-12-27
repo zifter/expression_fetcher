@@ -25,7 +25,7 @@ FETCHER_TEST(test_nullptr_equal_struct_without_stream_operator)
 
 FETCHER_TEST(test_nullptr_equal_pointer)
 {
-    TestStreamStruct2 *testObj = reinterpret_cast<TestStreamStruct2 *>(0xdeadbeaf);
+    TestStreamStruct2 *testObj = reinterpret_cast<TestStreamStruct2 *>(uintptr_t(0xdeadbeaf));
     Check(EVAL_CONDITION(nullptr == testObj), "nullptr == 0xdeadbeaf");
 }
 

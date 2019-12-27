@@ -55,6 +55,6 @@ FETCHER_TEST(test_struct_without_stream_operator)
 
 FETCHER_TEST(test_pointer)
 {
-    TestStreamStruct *testObj = reinterpret_cast<TestStreamStruct *>(0xdeadbeaf);
+    TestStreamStruct *testObj = reinterpret_cast<TestStreamStruct *>(uintptr_t(0xdeadbeaf));
     Check(EVAL_CONDITION(testObj), "0xdeadbeaf");
 }
